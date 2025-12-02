@@ -1,0 +1,108 @@
+{% extends "base.html" %}
+{% block title %}Kunden{% endblock %}
+{% block header_title %}Kundenübersicht{% endblock %}
+
+{% block app_content %}
+<div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between mb-4">
+  <div>
+    <h2 class="text-xl font-semibold text-slate-900">Kunden</h2>
+    <p class="text-sm text-slate-500">
+      Verwalte deine Firmen und Ansprechpartner.
+    </p>
+  </div>
+  <div class="flex gap-2">
+    <form method="get" action="{{ url_for('customers') }}" class="flex gap-2">
+      <input type="search" name="q"
+             placeholder="Suche Firma, Person, E-Mail..."
+             value="{{ q or '' }}"
+             class="w-56 md:w-72 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 placeholder:text-slate-400 focus:border-sky-400 focus:outline-none focus:ring-1 focus:ring-sky-400">
+      <button type="submit"
+              class="inline-flex items-center rounded-lg bg-slate-900 px-3 py-2 text-xs font-semibold text-white hover:bg-slate-800">
+        Suchen
+      </button>
+    </form>
+    <a href="{{ url_for('customer_new') }}"
+       class="inline-flex items-center rounded-lg bg-sky-600 px-3 py-2 text-xs font-semibold text-white hover:bg-sky-700">
+      + Neuer Kunde
+    </a>
+  </div>
+</div>
+
+<div class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+  <table class="min-w-full divide-y divide-slate-200 text-sm">
+    <thead class="bg-slate-50">
+      <tr class="text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
+        <th class="px-4 py-3">Firma</th>
+        <th class="px-4 py-3">Kontakt</th>
+        <th class="px-4 py-3">E-Mail</th>
+        <th class="px-4 py-3">Telefon</th>
+        <th class="px-4 py-3 text-right">Aktionen</th>
+      </tr>
+    </thead>
+    <tbody class="divide-y divide-slate-100 bg-white">
+    {% for c in pagination.items %}
+      <tr class="hover:bg-slate-50">
+        <td class="px-4 py-3">
+          <a href="{{ url_for('customer_detail', customer_id=c.id) }}"
+             class="font-medium text-slate-900 hover:text-sky-600">
+            {{ c.company }}
+          </a>
+        </td>
+        <td class="px-4 py-3 text-slate-700">
+          {{ c.contact_name or "—" }}
+        </td>
+        <td class="px-4 py-3 text-slate-700">
+          {{ c.email or "—" }}
+        </td>
+        <td class="px-4 py-3 text-slate-700">
+          {{ c.phone or "—" }}
+        </td>
+        <td class="px-4 py-3">
+          <div class="flex items-center justify-end gap-2">
+            <a href="{{ url_for('customer_edit', customer_id=c.id) }}"
+               class="inline-flex items-center rounded-md border border-slate-200 px-2.5 py-1.5 text-xs text-slate-600 hover:bg-slate-50">
+              Bearbeiten
+            </a>
+            <form method="post"
+                  action="{{ url_for('customer_delete', customer_id=c.id) }}"
+                  onsubmit="return confirm('Wirklich löschen?')">
+              <button type="submit"
+                      class="inline-flex items-center rounded-md bg-rose-50 px-2.5 py-1.5 text-xs font-medium text-rose-600 hover:bg-rose-100">
+                Löschen
+              </button>
+            </form>
+          </div>
+        </td>
+      </tr>
+    {% else %}
+      <tr>
+        <td colspan="5" class="px-4 py-6 text-center text-sm text-slate-500">
+          Keine Kunden gefunden.
+        </td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<div class="mt-4 flex items-center justify-between text-xs text-slate-500">
+  <div>
+    Seite <span class="font-semibold">{{ pagination.page }}</span>
+    von <span class="font-semibold">{{ pagination.pages or 1 }}</span>
+  </div>
+  <div class="flex gap-2">
+    {% if pagination.has_prev %}
+      <a href="{{ url_for('customers', q=q, page=pagination.prev_num) }}"
+         class="inline-flex items-center rounded-md border border-slate-200 px-3 py-1.5 hover:bg-slate-50">
+        « Zurück
+      </a>
+    {% endif %}
+    {% if pagination.has_next %}
+      <a href="{{ url_for('customers', q=q, page=pagination.next_num) }}"
+         class="inline-flex items-center rounded-md border border-slate-200 px-3 py-1.5 hover:bg-slate-50">
+        Weiter »
+      </a>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

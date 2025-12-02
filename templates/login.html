@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block title %}Login{% endblock %}
+{% block public_title %}Anmelden{% endblock %}
+
+{% block public_content %}
+<form method="post" class="space-y-4">
+  {{ form.hidden_tag() }}
+
+  <div class="space-y-1">
+    <label class="block text-sm font-medium text-slate-700">E-Mail</label>
+    {{ form.username(
+        class_="mt-1 block w-full rounded-lg border-slate-200 bg-slate-50 focus:bg-white focus:border-sky-400 focus:ring-sky-400 text-sm",
+        placeholder="name@firma.com"
+    ) }}
+  </div>
+
+  <div class="space-y-1">
+    <label class="block text-sm font-medium text-slate-700">Passwort</label>
+    {{ form.password(
+        class_="mt-1 block w-full rounded-lg border-slate-200 bg-slate-50 focus:bg-white focus:border-sky-400 focus:ring-sky-400 text-sm",
+        placeholder="••••••••"
+    ) }}
+  </div>
+
+  <div class="flex items-center justify-between text-sm">
+    <label class="inline-flex items-center gap-2 text-slate-600">
+      {{ form.remember(class_="rounded border-slate-300 text-sky-600 focus:ring-sky-500") }}
+      Angemeldet bleiben
+    </label>
+  </div>
+
+  <button type="submit"
+          class="w-full inline-flex justify-center rounded-lg bg-sky-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-sky-700">
+    Login
+  </button>
+
+  <p class="mt-4 text-center text-xs text-slate-500">
+    Noch kein Konto?
+    <a href="{{ url_for('register') }}" class="font-medium text-sky-600 hover:text-sky-700">
+      Jetzt registrieren
+    </a>
+  </p>
+</form>
+{% endblock %}

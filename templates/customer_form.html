@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% block title %}{{ title }}{% endblock %}
+{% block header_title %}{{ title }}{% endblock %}
+
+{% block app_content %}
+<div class="max-w-3xl">
+  <h2 class="text-lg font-semibold text-slate-900 mb-1">{{ title }}</h2>
+  <p class="text-sm text-slate-500 mb-6">
+    Stammdaten des Kunden erfassen oder bearbeiten.
+  </p>
+
+  <form method="post" class="space-y-6">
+    {{ form.hidden_tag() }}
+
+    <div class="grid gap-4 md:grid-cols-2">
+      <div class="space-y-1 md:col-span-2">
+        <label class="block text-sm font-medium text-slate-700">Firma</label>
+        {{ form.company(
+          class_="mt-1 block w-full rounded-lg border-slate-200 bg-white px-3 py-2 text-sm focus:border-sky-400 focus:ring-sky-400",
+          placeholder="Firmenname"
+        ) }}
+      </div>
+
+      <div class="space-y-1">
+        <label class="block text-sm font-medium text-slate-700">Ansprechperson</label>
+        {{ form.contact_name(
+          class_="mt-1 block w-full rounded-lg border-slate-200 bg-white px-3 py-2 text-sm focus:border-sky-400 focus:ring-sky-400",
+          placeholder="Name"
+        ) }}
+      </div>
+
+      <div class="space-y-1">
+        <label class="block text-sm font-medium text-slate-700">E-Mail</label>
+        {{ form.email(
+          class_="mt-1 block w-full rounded-lg border-slate-200 bg-white px-3 py-2 text-sm focus:border-sky-400 focus:ring-sky-400",
+          placeholder="kontakt@firma.com"
+        ) }}
+      </div>
+
+      <div class="space-y-1">
+        <label class="block text-sm font-medium text-slate-700">Telefon</label>
+        {{ form.phone(
+          class_="mt-1 block w-full rounded-lg border-slate-200 bg-white px-3 py-2 text-sm focus:border-sky-400 focus:ring-sky-400",
+          placeholder="+43 ..."
+        ) }}
+      </div>
+    </div>
+
+    <div class="space-y-1">
+      <label class="block text-sm font-medium text-slate-700">Notizen</label>
+      {{ form.notes(
+        class_="mt-1 block w-full rounded-lg border-slate-200 bg-white px-3 py-2 text-sm focus:border-sky-400 focus:ring-sky-400",
+        rows="4",
+        placeholder="Freitext, Gesprächsnotizen, nächste Schritte..."
+      ) }}
+    </div>
+
+    <div class="flex items-center gap-3">
+      <button type="submit"
+              class="inline-flex items-center rounded-lg bg-sky-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-sky-700">
+        Speichern
+      </button>
+      <a href="{{ url_for('customers') }}"
+         class="inline-flex items-center rounded-lg border border-slate-200 px-4 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-50">
+        Abbrechen
+      </a>
+    </div>
+  </form>
+</div>
+{% endblock %}

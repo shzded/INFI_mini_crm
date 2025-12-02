@@ -1,0 +1,258 @@
+{% extends "base.html" %}
+{% block title %}{{ customer.company }}{% endblock %}
+{% block header_title %}Kunde · {{ customer.company }}{% endblock %}
+
+{% block app_content %}
+<div class="space-y-6">
+
+  <!-- Header + KPI-Box -->
+  <section class="grid gap-4 md:grid-cols-3">
+    <!-- Kundenkopf -->
+    <div class="md:col-span-2 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+      <div class="flex items-start justify-between gap-4">
+        <div>
+          <h2 class="text-xl font-semibold text-slate-900">
+            {{ customer.company }}
+          </h2>
+          {% if customer.contact_name %}
+            <p class="mt-1 text-sm text-slate-600">
+              Ansprechpartner: {{ customer.contact_name }}
+            </p>
+          {% endif %}
+          <dl class="mt-4 grid gap-3 sm:grid-cols-2 text-sm">
+            <div>
+              <dt class="text-xs font-semibold uppercase tracking-wide text-slate-500">E-Mail</dt>
+              <dd class="mt-1 text-slate-900">{{ customer.email or "—" }}</dd>
+            </div>
+            <div>
+              <dt class="text-xs font-semibold uppercase tracking-wide text-slate-500">Telefon</dt>
+              <dd class="mt-1 text-slate-900">{{ customer.phone or "—" }}</dd>
+            </div>
+          </dl>
+        </div>
+        <div class="text-right">
+          <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Letzter Kontakt</p>
+          {% if last_contact %}
+            <p class="mt-1 text-sm text-slate-900">
+              {{ last_contact.contact_at.strftime('%d.%m.%Y') }} ({{ last_contact.channel }})
+            </p>
+            {% if days_since_last_contact is not none %}
+              <p class="mt-1 text-xs text-slate-500">
+                vor {{ days_since_last_contact }} Tag{% if days_since_last_contact != 1 %}en{% endif %}
+              </p>
+            {% endif %}
+          {% else %}
+            <p class="mt-1 text-sm text-slate-500">Kein Kontakt erfasst</p>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <!-- KPIs + Datumsfilter -->
+    <div class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+      <h3 class="text-sm font-semibold text-slate-900 mb-3">Umsatz</h3>
+      <dl class="space-y-3 text-sm">
+        <div class="flex items-baseline justify-between">
+          <dt class="text-slate-600">Gesamt</dt>
+          <dd class="text-base font-semibold text-slate-900">
+            {{ "%.2f"|format(revenue_total or 0) }} €
+          </dd>
+        </div>
+        <div class="flex items-baseline justify-between">
+          <dt class="text-slate-600">Letztes Jahr ({{ last_year }})</dt>
+          <dd class="text-base font-semibold text-slate-900">
+            {{ "%.2f"|format(revenue_last_year or 0) }} €
+          </dd>
+        </div>
+      </dl>
+
+      <form method="get"
+            action="{{ url_for('customer_detail', customer_id=customer.id) }}"
+            class="mt-4 space-y-2 text-xs">
+        <p class="font-semibold text-slate-700">Datumsbereich</p>
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block text-[11px] text-slate-500 mb-1">Von</label>
+            <input type="date" name="from"
+                   value="{{ date_from or '' }}"
+                   class="w-full rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs text-slate-700 focus:border-sky-400 focus:outline-none focus:ring-1 focus:ring-sky-400">
+          </div>
+          <div>
+            <label class="block text-[11px] text-slate-500 mb-1">Bis</label>
+            <input type="date" name="to"
+                   value="{{ date_to or '' }}"
+                   class="w-full rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs text-slate-700 focus:border-sky-400 focus:outline-none focus:ring-1 focus:ring-sky-400">
+          </div>
+        </div>
+        <div class="mt-3 flex gap-2">
+          <button type="submit"
+                  class="inline-flex flex-1 items-center justify-center rounded-lg bg-sky-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-sky-700">
+            Anwenden
+          </button>
+          <a href="{{ url_for('customer_detail', customer_id=customer.id) }}"
+             class="inline-flex flex-1 items-center justify-center rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50">
+            Zurücksetzen
+          </a>
+        </div>
+      </form>
+    </div>
+  </section>
+
+  <!-- Letzte Bestellungen -->
+  <section class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+    <div class="flex items-center justify-between gap-2 mb-3">
+      <div>
+        <h3 class="text-sm font-semibold text-slate-900">Letzte Bestellungen</h3>
+        <p class="text-xs text-slate-500">
+          Neueste Bestellungen dieses Kunden, optional gefiltert nach Datumsbereich.
+        </p>
+      </div>
+      <a href="{{ url_for('customers') }}"
+         class="hidden sm:inline-flex items-center rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50">
+        Zurück zur Liste
+      </a>
+    </div>
+
+    <div class="overflow-x-auto">
+      <table class="min-w-full divide-y divide-slate-200 text-xs">
+        <thead class="bg-slate-50">
+          <tr class="text-left font-semibold uppercase tracking-wide text-slate-500">
+            <th class="px-3 py-2">Bestellnr.</th>
+            <th class="px-3 py-2">Datum</th>
+            <th class="px-3 py-2">Positionen</th>
+            <th class="px-3 py-2">Status</th>
+            <th class="px-3 py-2 text-right">Summe</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-100 bg-white">
+        {% for order in orders %}
+          <tr class="hover:bg-slate-50">
+            <td class="px-3 py-2 font-mono text-[11px] text-slate-800">
+              {{ order.order_number }}
+            </td>
+            <td class="px-3 py-2 text-slate-700">
+              {{ order.order_date.strftime('%d.%m.%Y') }}
+            </td>
+            <td class="px-3 py-2 text-slate-700">
+              {{ order.positions_count }}
+            </td>
+            <td class="px-3 py-2">
+              <span class="inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-700">
+                {{ order.status }}
+              </span>
+            </td>
+            <td class="px-3 py-2 text-right text-slate-900">
+              {{ "%.2f"|format(order.total_amount or 0) }} €
+            </td>
+          </tr>
+        {% else %}
+          <tr>
+            <td colspan="5" class="px-3 py-4 text-center text-slate-500">
+              Keine Bestellungen im gewählten Zeitraum.
+            </td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- Letzte Kontakte -->
+  <section class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+    <div class="mb-3">
+      <h3 class="text-sm font-semibold text-slate-900">Letzte Kontakte</h3>
+      <p class="text-xs text-slate-500">
+        Neueste Kontakte mit diesem Kunden, chronologisch absteigend.
+      </p>
+    </div>
+
+    {% if contacts %}
+      <ol class="space-y-3 text-xs">
+        {% for contact in contacts %}
+          <li class="flex gap-3">
+            <div class="mt-1 h-2 w-2 flex-none rounded-full bg-sky-400"></div>
+            <div>
+              <div class="flex flex-wrap items-center gap-2">
+                <span class="text-[11px] text-slate-500">
+                  {{ contact.contact_at.strftime('%d.%m.%Y %H:%M') }}
+                </span>
+                <span class="inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-700">
+                  {{ contact.channel }}
+                </span>
+                {% if contact.user %}
+                  <span class="text-[11px] text-slate-500">
+                    von {{ contact.user.username }}
+                  </span>
+                {% endif %}
+              </div>
+              <p class="mt-1 text-slate-800">
+                <strong>{{ contact.subject }}</strong>
+              </p>
+              {% if contact.notes %}
+                <p class="mt-0.5 text-slate-600">
+                  {{ contact.notes }}
+                </p>
+              {% endif %}
+            </div>
+          </li>
+        {% endfor %}
+      </ol>
+    {% else %}
+      <p class="text-xs text-slate-500">
+        Keine Kontakte im gewählten Zeitraum.
+      </p>
+    {% endif %}
+  </section>
+
+  <!-- Stammdaten -->
+  <section class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+    <div class="flex items-center justify-between gap-2 mb-3">
+      <h3 class="text-sm font-semibold text-slate-900">Stammdaten</h3>
+      <div class="flex gap-2">
+        <a href="{{ url_for('customer_edit', customer_id=customer.id) }}"
+           class="inline-flex items-center rounded-lg bg-sky-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-sky-700">
+          Bearbeiten
+        </a>
+        <a href="{{ url_for('customers') }}"
+           class="inline-flex items-center rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50">
+          Zur Kundenliste
+        </a>
+      </div>
+    </div>
+
+    <dl class="grid gap-3 sm:grid-cols-2 text-sm">
+      <div>
+        <dt class="text-xs font-semibold uppercase tracking-wide text-slate-500">Firma</dt>
+        <dd class="mt-1 text-slate-900">{{ customer.company }}</dd>
+      </div>
+      <div>
+        <dt class="text-xs font-semibold uppercase tracking-wide text-slate-500">Ansprechperson</dt>
+        <dd class="mt-1 text-slate-900">{{ customer.contact_name or "—" }}</dd>
+      </div>
+      <div>
+        <dt class="text-xs font-semibold uppercase tracking-wide text-slate-500">Ort</dt>
+        <dd class="mt-1 text-slate-900">
+          {% if customer.zip_code or customer.city %}
+            {{ customer.zip_code or "" }} {{ customer.city or "" }}
+          {% else %}
+            —
+          {% endif %}
+        </dd>
+      </div>
+      <div>
+        <dt class="text-xs font-semibold uppercase tracking-wide text-slate-500">Straße</dt>
+        <dd class="mt-1 text-slate-900">
+          {{ customer.street or "—" }}
+        </dd>
+      </div>
+      <div class="sm:col-span-2">
+        <dt class="text-xs font-semibold uppercase tracking-wide text-slate-500">Notizen</dt>
+        <dd class="mt-1 text-slate-800 whitespace-pre-line">
+          {{ customer.notes or "Keine Notizen hinterlegt." }}
+        </dd>
+      </div>
+    </dl>
+  </section>
+
+</div>
+{% endblock %}

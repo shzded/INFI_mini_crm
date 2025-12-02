@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block title %}Registrieren{% endblock %}
+{% block public_title %}Neues Konto anlegen{% endblock %}
+
+{% block public_content %}
+<form method="post" class="space-y-4">
+  {{ form.hidden_tag() }}
+
+  <div class="space-y-1">
+    <label class="block text-sm font-medium text-slate-700">E-Mail</label>
+    {{ form.username(
+        class_="mt-1 block w-full rounded-lg border-slate-200 bg-slate-50 focus:bg-white focus:border-sky-400 focus:ring-sky-400 text-sm",
+        placeholder="name@firma.com"
+    ) }}
+  </div>
+
+  <div class="space-y-1">
+    <label class="block text-sm font-medium text-slate-700">Passwort</label>
+    {{ form.password(
+        class_="mt-1 block w-full rounded-lg border-slate-200 bg-slate-50 focus:bg-white focus:border-sky-400 focus:ring-sky-400 text-sm",
+        placeholder="Mind. 6 Zeichen"
+    ) }}
+  </div>
+
+  <div class="space-y-1">
+    <label class="block text-sm font-medium text-slate-700">Passwort wiederholen</label>
+    {{ form.confirm(
+        class_="mt-1 block w-full rounded-lg border-slate-200 bg-slate-50 focus:bg-white focus:border-sky-400 focus:ring-sky-400 text-sm",
+        placeholder="Nochmals eingeben"
+    ) }}
+  </div>
+
+  <button type="submit"
+          class="w-full inline-flex justify-center rounded-lg bg-sky-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-sky-700">
+    Konto anlegen
+  </button>
+
+  <p class="mt-4 text-center text-xs text-slate-500">
+    Bereits registriert?
+    <a href="{{ url_for('login') }}" class="font-medium text-sky-600 hover:text-sky-700">
+      Zum Login
+    </a>
+  </p>
+</form>
+{% endblock %}
