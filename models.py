@@ -1,16 +1,16 @@
-# models.py
 from datetime import datetime
 
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import UserMixin
 from werkzeug.security import generate_password_hash, check_password_hash
-from datetime import datetime
-
 
 db = SQLAlchemy()
 
 
 # ---------- Auth / User ----------
+
+from flask_login import UserMixin
+from werkzeug.security import generate_password_hash, check_password_hash
 
 class User(db.Model, UserMixin):
     __tablename__ = "users"
@@ -19,6 +19,10 @@ class User(db.Model, UserMixin):
     username = db.Column(db.String(120), unique=True, nullable=False)
     password_hash = db.Column(db.String(256), nullable=False)
 
+    # NEU: Rolle (CHEF / STAFF)
+    role = db.Column(db.String(20), nullable=False, default="STAFF")
+
+    # Beziehung zu Kontakten (optional, aber nice)
     contacts = db.relationship("Contact", back_populates="user", lazy="dynamic")
 
     def set_password(self, password: str):
@@ -27,10 +31,12 @@ class User(db.Model, UserMixin):
     def check_password(self, password: str) -> bool:
         return check_password_hash(self.password_hash, password)
 
+    @property
+    def is_chef(self) -> bool:
+        return (self.role or "").upper() == "CHEF"
+
     def __repr__(self) -> str:
-        return f"<User {self.username}>"
-
-
+        return f"<User {self.username} ({self.role})>"
 
 class LoginCode(db.Model):
     __tablename__ = "login_codes"
@@ -73,20 +79,30 @@ class Customer(db.Model):
         return f"<Customer {self.company}>"
 
 
+from datetime import datetime
+from sqlalchemy import Numeric
+
 class Product(db.Model):
     __tablename__ = "products"
 
     id = db.Column(db.Integer, primary_key=True)
+
+    # NEU: Artikelnummer (aus Migration & Seed)
     sku = db.Column(db.String(50), unique=True, nullable=False)
+
     name = db.Column(db.String(120), nullable=False)
-    price = db.Column(db.Numeric(10, 2), nullable=False)
 
-    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    # Preis
+    unit_price = db.Column(db.Numeric(10, 2), nullable=False, default=0)
 
+    # Erzeugungsdatum (aus Migration)
+    created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+
+    # Beziehung zu OrderItems (optional, aber konsistent mit Orders)
     order_items = db.relationship("OrderItem", back_populates="product", lazy="dynamic")
 
-    def __repr__(self) -> str:
-        return f"<Product {self.sku} {self.name}>"
+    def __repr__(self):
+        return f"<Product {self.sku} {self.name} €{self.unit_price}>"
 
 
 class Order(db.Model):
@@ -121,38 +137,34 @@ class OrderItem(db.Model):
     __tablename__ = "order_items"
 
     id = db.Column(db.Integer, primary_key=True)
-    order_id = db.Column(db.Integer, db.ForeignKey("orders.id"), nullable=False, index=True)
-    product_id = db.Column(db.Integer, db.ForeignKey("products.id"), nullable=False, index=True)
-
+    order_id = db.Column(db.Integer, db.ForeignKey("orders.id"), nullable=False)
+    product_id = db.Column(db.Integer, db.ForeignKey("products.id"), nullable=False)
     quantity = db.Column(db.Integer, nullable=False)
     unit_price = db.Column(db.Numeric(10, 2), nullable=False)
-    subtotal = db.Column(db.Numeric(10, 2), nullable=False)
 
     order = db.relationship("Order", back_populates="items")
     product = db.relationship("Product", back_populates="order_items")
-
-    def __repr__(self) -> str:
-        return f"<OrderItem order={self.order_id} product={self.product_id}>"
 
 
 class Contact(db.Model):
     __tablename__ = "contacts"
 
     id = db.Column(db.Integer, primary_key=True)
-    customer_id = db.Column(db.Integer, db.ForeignKey("customers.id"), nullable=False, index=True)
-    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True, index=True)
+    customer_id = db.Column(db.Integer, db.ForeignKey("customers.id"), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True)
 
-    # Telefon, E-Mail, Meeting, Chat, ...
     channel = db.Column(db.String(20), nullable=False)
     subject = db.Column(db.String(200), nullable=False)
     notes = db.Column(db.Text)
 
-    contact_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    # NEU: Bewertung (1–5), optional
+    rating = db.Column(db.Integer, nullable=True)
 
-    # Beziehungen
+    contact_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+
     customer = db.relationship("Customer", back_populates="contacts")
     user = db.relationship("User", back_populates="contacts")
 
-    def __repr__(self) -> str:
-        return f"<Contact customer={self.customer_id} channel={self.channel}>"
+    def __repr__(self):
+        return f"<Contact customer={self.customer_id} channel={self.channel} rating={self.rating}>"

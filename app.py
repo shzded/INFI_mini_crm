@@ -1,6 +1,10 @@
 import os
 import random
 from datetime import datetime, timedelta
+
+from dotenv import load_dotenv
+load_dotenv()
+
 from sqlalchemy import or_
 
 from flask import (
@@ -20,23 +24,46 @@ from models import db, User, LoginCode, Customer, Product, Order, OrderItem, Con
 
 
 # ------------------ Basis ------------------
+import os
+from dotenv import load_dotenv
+
+# Basis-Verzeichnis des Projekts
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
-DB_PATH = os.path.join(BASE_DIR, "crm.sqlite3")
 
+# .env sicher laden (funktioniert auch im Web-Worker von PythonAnywhere)
+load_dotenv(os.path.join(BASE_DIR, ".env"))
+
+from flask import Flask
+from flask_migrate import Migrate
+from models import db
+
+
+# ------------------ Flask App ------------------
 app = Flask(__name__)
-app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", "dev-secret-change-me")
 
-# --- Datenbank-Config ---
-# Bevorzugt MySQL/MariaDB über Umgebungsvariable, sonst SQLite als Fallback (lokale Entwicklung)
+# Secret Key aus .env
+app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY")
+if not app.config["SECRET_KEY"]:
+    raise RuntimeError("SECRET_KEY fehlt in .env")
+
+
+# ------------------ Datenbank ------------------
 db_url = os.environ.get("DATABASE_URL")
-if db_url:
-    # Beispiel für MySQL: mysql+pymysql://user:pass@host/dbname
-    app.config["SQLALCHEMY_DATABASE_URI"] = db_url
-else:
-    app.config["SQLALCHEMY_DATABASE_URI"] = f"sqlite:///{DB_PATH}"
 
+if not db_url:
+    raise RuntimeError(
+        "DATABASE_URL ist nicht gesetzt! "
+        "MySQL/MariaDB muss in der .env definiert sein."
+    )
+
+# → ZWINGT MySQL
+app.config["SQLALCHEMY_DATABASE_URI"] = db_url
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
+# Debug-Ausgabe (taucht im PythonAnywhere Log auf)
+print("### AKTIVE DATENBANK:", app.config["SQLALCHEMY_DATABASE_URI"], flush=True)
+
+# Init DB + Migration
 db.init_app(app)
 migrate = Migrate(app, db)
 
@@ -485,160 +512,163 @@ def customer_delete(customer_id):
     return redirect(url_for("customers"))
 
 # ------------------ CLI / Seeder ------------------
-@app.cli.command("seed-db")
-def seed_db():
-    """Beispieldaten: 1 Demo-User, >=10 Kunden, Produkte, >=50 Bestellungen, >=50 Kontakte."""
+@app.cli.command("seed")
+def seed_command():
+    """Befüllt die Datenbank mit Demodaten (Kunden, Produkte, Bestellungen, Kontakte, User)."""
+    from models import db, User, Customer, Product, Order, OrderItem, Contact, LoginCode
+    from datetime import datetime, timedelta
+    import random
+    from decimal import Decimal
 
-    print("Starte Seeding ...")
+    # --- alles löschen, damit wir sauber neu befüllen können ---
+    OrderItem.query.delete()
+    Order.query.delete()
+    Contact.query.delete()
+    Product.query.delete()
+    Customer.query.delete()
+    LoginCode.query.delete()
+    User.query.delete()
+    db.session.commit()
 
-    # Demo-User anlegen (für contacts.user_id)
-    user = User.query.filter_by(username="demo@example.com").first()
-    if not user:
-        user = User(username="demo@example.com")
-        user.set_password("demo1234")
-        db.session.add(user)
-        db.session.commit()
-        print("Demo-User angelegt: demo@example.com / demo1234")
-    else:
-        print("Demo-User existiert bereits.")
+    # --- Demo-User (CHEF) ---
+    chef = User(username="admin@example.com", role="CHEF")
+    chef.set_password("admin123")
+    db.session.add(chef)
+    db.session.commit()
 
-    # Produkte anlegen
-    if Product.query.count() == 0:
-        products_data = [
-            ("P-1001", "Beratungspaket S", 250.00),
-            ("P-1002", "Beratungspaket M", 500.00),
-            ("P-1003", "Beratungspaket L", 900.00),
-            ("P-2001", "Software-Lizenz Basic", 120.00),
-            ("P-2002", "Software-Lizenz Pro", 290.00),
-            ("P-3001", "Supportvertrag", 75.00),
-        ]
-        for sku, name, price in products_data:
-            p = Product(sku=sku, name=name, price=price)
-            db.session.add(p)
-        db.session.commit()
-        print(f"{len(products_data)} Produkte angelegt.")
-    else:
-        print("Produkte existieren bereits.")
+    # --- Produkte ---
+    products_data = [
+        ("P-100", "Beratungspaket Basic", Decimal("890.00")),
+        ("P-200", "Beratungspaket Plus", Decimal("1490.00")),
+        ("P-300", "Supportvertrag", Decimal("590.00")),
+        ("P-400", "Workshop Tagessatz", Decimal("1200.00")),
+        ("P-500", "Lizenz SMALL", Decimal("49.00")),
+        ("P-600", "Lizenz MEDIUM", Decimal("99.00")),
+        ("P-700", "Lizenz LARGE", Decimal("199.00")),
+    ]
+    products = []
+    now = datetime.utcnow()
+    for sku, name, price in products_data:
+        p = Product(
+            sku=sku,
+            name=name,
+            unit_price=price,
+            created_at=now,
+        )
+        db.session.add(p)
+        products.append(p)
+    db.session.commit()
 
-    # Kunden anlegen (>=10)
-    if Customer.query.count() == 0:
-        customers_data = [
-            ("Acme GmbH", "Max Mustermann", "max@acme.example", "+43 1 234567"),
-            ("Blue Widgets OG", "Anna Blau", "anna@blue.example", "+43 699 111"),
-            ("Green Solutions KG", "Lisa Grün", "lisa@green.example", "+43 1 555555"),
-            ("Red Tech AG", "Peter Rot", "peter@red.example", "+43 1 999999"),
-            ("Sunrise Consulting", "Johannes Licht", "johannes@sunrise.example", "+43 660 1111111"),
-            ("Nordwind GmbH", "Sophie Nord", "sophie@nordwind.example", "+43 670 2222222"),
-            ("Alpen IT", "Markus Berg", "markus@alpenit.example", "+43 699 3333333"),
-            ("City Logistics", "Julia Stadt", "julia@citylog.example", "+43 1 7777777"),
-            ("Future Media", "Nina Neu", "nina@futuremedia.example", "+43 1 8888888"),
-            ("Kaffeehaus Huber", "Thomas Huber", "thomas@kaffeehuber.example", "+43 1 1231234"),
-            ("Müller & Partner", "Sabine Müller", "sabine@muellerpartner.example", "+43 1 4321432"),
-        ]
-        for company, contact_name, email, phone in customers_data:
-            c = Customer(
-                company=company,
-                contact_name=contact_name,
-                email=email,
-                phone=phone,
-                city="Wien",
+    # --- Kunden ---
+    customers_data = [
+        ("Acme GmbH", "Max Mustermann", "max@acme.example", "+43 1 234567", "Hauptkunde Wien"),
+        ("Blue Widgets OG", "Anna Blau", "anna@blue.example", "+43 699 111", "Interessiert an Upgrade"),
+        ("TechNova GmbH", "Laura Huber", "laura@technova.example", "+43 316 9999", "Cloud-Projekt 2025"),
+        ("Grün & Co KG", "Peter Grün", "peter@gruen.example", "+43 512 8888", "Supportvertrag Bronze"),
+        ("Alpha Consult", "Sabine Weiss", "sabine@alpha.example", "+43 2742 12345", "Workshops geplant"),
+        ("Bergblick Hotels", "Johann Steiner", "johann@bergblick.example", "+43 6542 7777", "Saisonbetrieb"),
+        ("CityShop e.U.", "Martin Schwarz", "martin@cityshop.example", "+43 1 7654321", "E-Commerce"),
+        ("DigiFactory GmbH", "Lisa König", "lisa@digifactory.example", "+43 732 5555", "Automation"),
+        ("EventPro OG", "Thomas Fuchs", "thomas@eventpro.example", "+43 1 4444", "Events & Tickets"),
+        ("FreshFoods KG", "Maria Grün", "maria@freshfoods.example", "+43 662 3333", "Lieferkettenanalyse"),
+    ]
+    customers = []
+    for company, contact_name, email, phone, notes in customers_data:
+        c = Customer(
+            company=company,
+            contact_name=contact_name,
+            email=email,
+            phone=phone,
+            notes=notes,
+            street="Beispielstraße 1",
+            zip_code="1010",
+            city="Wien",
+            created_at=now - timedelta(days=random.randint(30, 400)),
+            updated_at=now,
+        )
+        db.session.add(c)
+        customers.append(c)
+    db.session.commit()
+
+    # --- Hilfsfunktionen ---
+    def random_date_within_last_years(years: int = 2) -> datetime:
+        days = random.randint(0, years * 365)
+        return now - timedelta(days=days, hours=random.randint(0, 23))
+
+    statuses = ["offen", "bezahlt", "storniert"]
+
+    # --- Bestellungen & Positionen ---
+    for customer in customers:
+        # pro Kunde 3–8 Bestellungen
+        for i in range(random.randint(3, 8)):
+            order_date = random_date_within_last_years()
+            status = random.choice(statuses)
+
+            # simple laufende Nummer
+            order_number = f"ORD-{customer.id:03d}-{i+1:03d}"
+
+            o = Order(
+                customer=customer,
+                order_number=order_number,
+                order_date=order_date,
+                status=status,
+                total_amount=Decimal("0.00"),
+                currency="EUR",
+                created_at=order_date,
             )
-            db.session.add(c)
-        db.session.commit()
-        print(f"{len(customers_data)} Kunden angelegt.")
-    else:
-        print("Kunden existieren bereits.")
+            db.session.add(o)
+            db.session.flush()  # damit o.id da ist
 
-    products = Product.query.all()
-    customers = Customer.query.all()
-
-    # Hilfsfunktion: zufälliges Datum in den letzten 3 Jahren
-    def random_date_within_last_years(years: int = 3):
-        now = datetime.utcnow()
-        days_back = random.randint(0, 365 * years)
-        return now - timedelta(days=days_back)
-
-    # Bestellungen erzeugen (>=50 global)
-    orders_count_before = Order.query.count()
-    if orders_count_before < 50:
-        print("Erzeuge Bestellungen ...")
-        for customer in customers:
-            # pro Kunde 3–8 Bestellungen
-            for _ in range(random.randint(3, 8)):
-                order_date = random_date_within_last_years()
-                order_number = f"O-{customer.id}-{random.randint(10000, 99999)}"
-
-                order = Order(
-                    customer=customer,
-                    order_number=order_number,
-                    order_date=order_date,
-                    status=random.choice(["offen", "bezahlt", "storniert"]),
-                    currency="EUR",
+            total = Decimal("0.00")
+            for _ in range(random.randint(1, 4)):
+                product = random.choice(products)
+                qty = random.randint(1, 5)
+                line_total = product.unit_price * qty
+                item = OrderItem(
+                    order=o,
+                    product=product,
+                    quantity=qty,
+                    unit_price=product.unit_price,
                 )
-                db.session.add(order)
-                db.session.flush()  # damit order.id vorhanden ist
+                db.session.add(item)
+                total += line_total
 
-                # Order-Items: 1–4 Positionen
-                positions = random.randint(1, 4)
-                total = 0
-                for _ in range(positions):
-                    product = random.choice(products)
-                    qty = random.randint(1, 5)
-                    unit_price = product.price
-                    subtotal = qty * float(unit_price)
-                    item = OrderItem(
-                        order_id=order.id,
-                        product_id=product.id,
-                        quantity=qty,
-                        unit_price=unit_price,
-                        subtotal=subtotal,
-                    )
-                    total += subtotal
-                    db.session.add(item)
+            o.total_amount = total
 
-                order.total_amount = total
+    db.session.commit()
 
-        db.session.commit()
-        print(f"Bestellungen jetzt gesamt: {Order.query.count()}")
-    else:
-        print(f"Es existieren bereits {orders_count_before} Bestellungen – kein Seeding nötig.")
+    # --- Kontakte ---
+    channels = ["phone", "email", "meeting", "chat"]
+    subjects = [
+        "Rückfrage zum Angebot",
+        "Support-Anfrage",
+        "Quartalsgespräch",
+        "Lizenzverlängerung",
+        "Kickoff Meeting",
+        "Status-Update",
+    ]
 
-    # Kontakte erzeugen (>=50 global)
-    contacts_count_before = Contact.query.count()
-    if contacts_count_before < 50:
-        print("Erzeuge Kontakte ...")
-        channels = ["phone", "email", "meeting", "chat"]
-        subjects = [
-            "Anfrage Angebot",
-            "Rückruf erbeten",
-            "Status Projekt",
-            "Supportanfrage",
-            "Jahresgespräch",
-        ]
+    for customer in customers:
+        for _ in range(random.randint(3, 8)):
+            contact_date = random_date_within_last_years()
+            channel = random.choice(channels)
+            subject = random.choice(subjects)
+            contact = Contact(
+                customer=customer,
+                user=chef,
+                channel=channel,
+                subject=subject,
+                notes="Beispielkontakt (Seeder).",
+                rating=random.choice([1, 2, 3, 4, 5]),
+                contact_at=contact_date,
+                created_at=contact_date,
+            )
+            db.session.add(contact)
 
-        for customer in customers:
-            # pro Kunde 3–8 Kontakte
-            for _ in range(random.randint(3, 8)):
-                contact_date = random_date_within_last_years()
-                channel = random.choice(channels)
-                subject = random.choice(subjects)
+    db.session.commit()
 
-                contact = Contact(
-                    customer=customer,
-                    user=user,
-                    channel=channel,
-                    subject=subject,
-                    notes="Kurzer Beispielkontakt für Demodaten.",
-                    contact_at=contact_date,
-                )
-                db.session.add(contact)
+    print("✅ Seeder fertig: Demo-User, Kunden, Produkte, Bestellungen und Kontakte angelegt.")
 
-        db.session.commit()
-        print(f"Kontakte jetzt gesamt: {Contact.query.count()}")
-    else:
-        print(f"Es existieren bereits {contacts_count_before} Kontakte – kein Seeding nötig.")
-
-    print("Seeding abgeschlossen.")
 
 if __name__ == "__main__":
     with app.app_context():

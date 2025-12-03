@@ -42,11 +42,16 @@ crm/
  │     ├── dashboard.html
  │     ├── customers.html
  │     ├── customer_detail.html
+ │     ├── customer_form.html
  │     ├── orders.html
+ │     ├── index.html
+ │     ├── login.html
+ │     ├── register.html
+ │     ├── verify.html
  │     └── contacts.html
- ├── static/
  ├── migrations/
- ├── seed.py
+ ├── .gitignore
+ ├── README.md
  └── requirements.txt
 ```
 
@@ -66,7 +71,7 @@ crm/
 ## 1. Projekt klonen
 
 ```bash
-git clone https://github.com/DEIN_REPO/crm.git
+git clone https://github.com/shzded/INFI_mini_crm
 cd crm
 ```
 
