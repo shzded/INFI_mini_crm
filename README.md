@@ -91,7 +91,7 @@ pip install -r requirements.txt
 ## 4. Umgebungsvariablen erstellen
 
 ```
-DATABASE_URL=mysql+pymysql://user:pass@localhost/crm
+DATABASE_URL=mysql+pymysql://nbodner:jethyf-vatka4-Dojzod@nbodner.mysql.pythonanywhere-services.com/nbodner$crm
 SECRET_KEY=irgendein_geheimer_schlüssel
 TZ=Europe/Vienna
 ```
@@ -272,12 +272,8 @@ Eine Präsentation sollte enthalten:
 | UI/UX | ✔️ |
 | Migrationen | ✔️ |
 | Dokumentation | ✔️ |
-| Präsentation | ⚪ (muss erstellt werden) |
+| Präsentation | ✔️ |
 
 ---
-
-
-
-
 
 
